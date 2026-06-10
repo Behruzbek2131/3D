@@ -3,68 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Yulduzli Particle Morphing - Mobil uchun To'liq Fix</title>
+    <title>Mega 3D Cosmic Space - 4 in 1</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #020208;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-            touch-action: none; /* Mobil qurilmalarda ekranni tortganda siljib ketmasligi uchun */
+            margin: 0; overflow: hidden;
+            background-color: #010105;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none; touch-action: none;
         }
         canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
-            top: 0;
-            left: 0;
+            display: block; width: 100vw; height: 100vh;
+            position: absolute; top: 0; left: 0; cursor: grab;
         }
-        /* Input interfeysi har doim o'rtada va to'g'ri joylashishi uchun */
+        canvas:active { cursor: grabbing; }
+        
         #input-container {
-            position: absolute;
-            bottom: 10%;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            width: 85%;
-            max-width: 400px;
+            position: absolute; bottom: 8%; left: 50%;
+            transform: translateX(-50%); z-index: 10;
+            width: 85%; max-width: 400px; text-align: center;
         }
         input {
-            width: 100%;
-            padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(0, 255, 200, 0.4);
-            border-radius: 30px;
-            color: #fff;
-            font-size: 16px;
-            outline: none;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+            width: 100%; padding: 14px 22px;
+            background: rgba(255, 0, 85, 0.03);
+            border: 2px solid rgba(255, 0, 100, 0.4);
+            border-radius: 30px; color: #fff; font-size: 16px;
+            outline: none; text-align: center;
+            box-shadow: 0 0 25px rgba(255, 0, 100, 0.2);
             transition: all 0.3s ease;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
         input:focus {
-            border-color: #00ffcc;
-            box-shadow: 0 0 25px rgba(0, 255, 200, 0.5);
+            border-color: #ff0055;
+            box-shadow: 0 0 35px rgba(255, 0, 100, 0.6);
+        }
+        
+        /* Musiqa faollashishi uchun ogohlantirish (Brauzer qoidalari uchun) */
+        #audio-notice {
+            position: absolute; top: 20px; left: 50%;
+            transform: translateX(-50%); z-index: 100;
+            color: rgba(255,255,255,0.7); font-size: 12px;
+            background: rgba(0,0,0,0.6); padding: 8px 15px;
+            border-radius: 20px; pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: opacity 0.5s;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
+    <div id="audio-notice">Ekran ustiga bosing — Kosmik Musiqa faollashadi 🎵</div>
     <canvas id="webgl"></canvas>
+    
     <div id="input-container">
         <input type="text" id="star-input" placeholder="Ismingizni yozing..." maxlength="15">
     </div>
 
     <script>
-        // 1. Scene, Camera, Renderer sozlash
+        // 1. ASOSIY 3D SOZLAMALAR
         const canvas = document.querySelector('#webgl');
         const scene = new THREE.Scene();
         
@@ -75,19 +73,54 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // 2. Yulduzlar (Zarrachalar) tizimi
-        const particleCount = 12000; // Mobil telefonlar qotmasligi uchun optimal miqdor
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // 2. AUDIO VIZUALIZATOR (Musiqa mantig'i)
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+        const sound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        let analyser;
+        let audioInitialized = false;
+
+        // Ochiq litsenziyali neon/kiberpank musiqasi URL manzili
+        const trackUrl = 'https://actions.google.com/sounds/v1/science_fiction/ambient_space_machine.ogg';
+
+        function initAudio() {
+            if (audioInitialized) return;
+            audioLoader.load(trackUrl, (buffer) => {
+                sound.setBuffer(buffer);
+                sound.setLoop(true);
+                sound.setVolume(0.5);
+                sound.play();
+                analyser = new THREE.AudioAnalyser(sound, 32);
+                document.getElementById('audio-notice').style.opacity = 0;
+                audioInitialized = true;
+            });
+        }
+
+        window.addEventListener('click', initAudio);
+        window.addEventListener('touchstart', initAudio);
+
+        // 3. YULDUZLAR TIZIMI VA GRADIENT RANG
+        const particleCount = 15000; 
         const geometry = new THREE.BufferGeometry();
         
         const positions = new Float32Array(particleCount * 3); 
         const randomPositions = new Float32Array(particleCount * 3); 
         const targetPositions = new Float32Array(particleCount * 3); 
+        const colors = new Float32Array(particleCount * 3); // Har bir yulduz rangi uchun massiv
 
-        // Tasodifiy sochish koordinatalari
+        const colorX = new THREE.Color(0xff0000); // Chap tomon - Qizil
+        const colorY = new THREE.Color(0xff00bb); // O'rta tomon - Pushti
+        const colorZ = new THREE.Color(0x9900ff); // O'ng tomon - Binafsha
+
         for (let i = 0; i < particleCount * 3; i += 3) {
-            randomPositions[i] = (Math.random() - 0.5) * 140;     
-            randomPositions[i + 1] = (Math.random() - 0.5) * 90;  
-            randomPositions[i + 2] = (Math.random() - 0.5) * 60;  
+            randomPositions[i] = (Math.random() - 0.5) * 160;     
+            randomPositions[i + 1] = (Math.random() - 0.5) * 100;  
+            randomPositions[i + 2] = (Math.random() - 0.5) * 70;  
 
             positions[i] = randomPositions[i];
             positions[i + 1] = randomPositions[i + 1];
@@ -96,11 +129,18 @@
             targetPositions[i] = randomPositions[i];
             targetPositions[i + 1] = randomPositions[i + 1];
             targetPositions[i + 2] = randomPositions[i + 2];
+
+            // 3D Fazoda joylashuviga qarab zarrachalarga kamalak gradientini berish
+            const mixColor = colorX.clone().lerp(colorZ, (randomPositions[i] + 80) / 160);
+            colors[i] = mixColor.r;
+            colors[i + 1] = mixColor.g;
+            colors[i + 2] = mixColor.b;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3)); // Rang atributini ulash
 
-        // Yulduz teksturasi
+        // Yumshoq yulduz teksturasi
         const pCanvas = document.createElement('canvas');
         pCanvas.width = 16; pCanvas.height = 16;
         const pCtx = pCanvas.getContext('2d');
@@ -116,36 +156,36 @@
             transparent: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            color: 0x00ffff
+            vertexColors: true // Har bir nuqtaning shaxsiy rangidan foydalanishni yoqish
         });
 
         const particleSystem = new THREE.Points(geometry, material);
         scene.add(particleSystem);
 
-        // 3. MATNNI PIKSELLARGA DINAMIK O'GIRISH (MOBIL MOSLASHUVCHAN)
+        // 4. MATNNI PIKSELLARGA DINAMIK O'GIRISH VA PORTLASH (EXPLOSION) MANTIG'I
         const textCanvas = document.createElement('canvas');
         const textCtx = textCanvas.getContext('2d');
         
         function textToParticles(text) {
+            // PORTLASH EFFEKTI: Har safar yangi yozuv yozilganda, yulduzlarning hozirgi koordinatasini markazdan tashqariga otib yuboramiz
+            const posAttr = geometry.attributes.position;
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                posAttr.array[i] += (Math.random() - 0.5) * 45; 
+                posAttr.array[i + 1] += (Math.random() - 0.5) * 45;
+                posAttr.array[i + 2] += (Math.random() - 0.5) * 45;
+            }
+
             if (text === '') {
                 for (let i = 0; i < particleCount * 3; i++) {
                     targetPositions[i] = randomPositions[i];
                 }
-                material.color.setHex(0x00ffff);
                 return;
             }
 
-            material.color.setHex(0xff3333); // Yozuv rangini pushtiga o'zgartirish
-
-            // Kenglik va balandlikni kattaroq olamiz, skale yordamida o'lchamni boshqaramiz
-            const width = 300;
-            const height = 80;
-            textCanvas.width = width;
-            textCanvas.height = height;
-
+            const width = 300; const height = 80;
+            textCanvas.width = width; textCanvas.height = height;
             textCtx.clearRect(0, 0, width, height);
             
-            // Matn uzunligiga qarab shrift o'lchamini dinamik kichraytirish (Chekkadan chiqib ketmasligi uchun)
             let fontSize = 32;
             if (text.length > 6) fontSize = 24;
             if (text.length > 10) fontSize = 18;
@@ -159,7 +199,6 @@
             const imageData = textCtx.getImageData(0, 0, width, height).data;
             const points = [];
 
-            // Ekran torligiga (mobilga) qarab zarrachalarning umumiy masshtabini o'zgartiramiz
             const isMobile = window.innerWidth <= 480;
             const scale = isMobile ? 0.28 : 0.45; 
 
@@ -175,14 +214,13 @@
                 }
             }
 
-            // Nuqtalarni zarrachalarga taqsimlash
             let pIndex = 0;
             for (let i = 0; i < particleCount * 3; i += 3) {
                 if (points.length > 0) {
                     const pt = points[pIndex % points.length];
                     targetPositions[i] = pt.x + (Math.random() - 0.5) * 0.3; 
                     targetPositions[i + 1] = pt.y + (Math.random() - 0.5) * 0.3;
-                    targetPositions[i + 2] = (Math.random() - 0.5) * 2;   
+                    targetPositions[i + 2] = (Math.random() - 0.5) * 3;   
                     pIndex++;
                 } else {
                     targetPositions[i] = randomPositions[i];
@@ -192,72 +230,97 @@
             }
         }
 
-        // Input element va uning hodisasi
         const inputElement = document.getElementById('star-input');
         inputElement.addEventListener('input', (e) => {
             textToParticles(e.target.value);
         });
 
-        // 4. SICHQONCHA VA SENSOR HARAKATLARI
-        const mouse = { x: 0, y: 0 };
+        // 5. SICHQONCHA GRAVITATSIYASI (MAGNIT) MANTIG'I
+        const mouse = { x: 0, y: 0, realX: 0, realY: 0 };
+        const raycaster = new THREE.Raycaster();
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Kursorning 3D fazodagi tekisligi
+        const mouse3D = new THREE.Vector3();
+
         window.addEventListener('mousemove', (e) => {
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            // Kursorning 3D koordinatalarini hisoblash
+            raycaster.setFromCamera(mouse, camera);
+            raycaster.ray.intersectPlane(plane, mouse3D);
         });
 
-        // Mobil sensor teginishini boshqarish
         window.addEventListener('touchmove', (e) => {
             if(e.touches.length > 0) {
                 mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                raycaster.ray.intersectPlane(plane, mouse3D);
             }
         }, { passive: false });
 
-        // 5. RESIZE MOSLASHUVCHANLIGI
+        // 6. RESIZE SOZLAMASI
         function handleResize() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
+            const width = window.innerWidth; const height = window.innerHeight;
+            camera.aspect = width / height; camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-
-            // Ekran kichrayganda kamerani orqaga surib, zarrachalar o'lchamini kattalashtiramiz
-            if (width <= 480) {
-                camera.position.z = 75;      
-                material.size = 0.6;        
-            } else {
-                camera.position.z = 60;      
-                material.size = 0.45;
-            }
+            if (width <= 480) { camera.position.z = 75; material.size = 0.6; } 
+            else { camera.position.z = 60; material.size = 0.45; }
             material.needsUpdate = true;
-            
-            // Ekran o'zgarganda matnni qayta hisoblab render qilish
             textToParticles(inputElement.value);
         }
-
         window.addEventListener('resize', handleResize);
         handleResize();
 
-        // 6. ANIMATSIYA TSIKLI
+        // 7. ANIMATSIYA VA RENDER TSIKLI
         const animate = () => {
             requestAnimationFrame(animate);
+            controls.update();
 
             const positionAttribute = geometry.attributes.position;
+            
+            // Musiqa chastotasini olish (Audio pulsatsiya uchun)
+            let audioScale = 1;
+            if (analyser) {
+                const frequency = analyser.getAverageFrequency(); // 0 dan 255 gacha qiymat qaytaradi
+                audioScale = 1 + (frequency / 255) * 0.4; // Musiqaga qarab 1.4 barovargacha kattalashadi
+            }
 
-            // Lerp orqali silliq harakatlanish
-            for (let i = 0; i < particleCount * 3; i++) {
-                positionAttribute.array[i] += (targetPositions[i] - positionAttribute.array[i]) * 0.08;
+            // Har bir zarracha harakati matematikasi
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                let currentX = positionAttribute.array[i];
+                let currentY = positionAttribute.array[i+1];
+                let currentZ = positionAttribute.array[i+2];
+
+                let targetX = targetPositions[i] * audioScale; // Musiqa basiga qarab harflar sakraydi
+                let targetY = targetPositions[i+1] * audioScale;
+                let targetZ = targetPositions[i+2] * audioScale;
+
+                // SICHQONCHA MAGNITI EFFEKTI: Kursorga yaqin zarrachalarni kursor tomonga tortish
+                let dx = mouse3D.x - currentX;
+                let dy = mouse3D.y - currentY;
+                let dz = mouse3D.z - currentZ;
+                let distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                if (distance < 15) { // Agar yulduz kursorga 15 birlik yaqin bo'lsa
+                    let force = (15 - distance) / 15; // Yaqinlashgan sari kuchayadi
+                    targetX += (dx / distance) * force * 10;
+                    targetY += (dy / distance) * force * 10;
+                }
+
+                // Silliq Lerp koeffitsiyenti orqali uchirish
+                positionAttribute.array[i] += (targetX - currentX) * 0.08;
+                positionAttribute.array[i+1] += (targetY - currentY) * 0.08;
+                positionAttribute.array[i+2] += (targetZ - currentZ) * 0.08;
             }
             positionAttribute.needsUpdate = true;
 
-            // Burilish effekti
-            if(inputElement.value === '') {
+            // Avtomatik sekin fon aylanishi (Faqat input bo'sh bo'lganda)
+            if(inputElement.value === '' && !controls.state == -1) {
                 particleSystem.rotation.y += 0.001;
                 particleSystem.rotation.x += 0.0005;
             } else {
-                particleSystem.rotation.y += (mouse.x * 0.3 - particleSystem.rotation.y) * 0.05;
-                particleSystem.rotation.x += (-mouse.y * 0.3 - particleSystem.rotation.x) * 0.05;
+                particleSystem.rotation.set(0, 0, 0);
             }
 
             renderer.render(scene, camera);
